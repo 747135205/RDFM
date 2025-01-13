@@ -18,13 +18,10 @@ from utils import get_method, check_correct, resize, shuffle_dataset, get_n_para
 import torch.nn as nn
 import torch.nn.functional as F
 from functools import partial
-#from multi_sovit_linear_avg import EfficientViT
-# from multi_sovit import EfficientViT
-# from multi_sovit_linear import EfficientViT
-# from efficient_sovit_BOOST import EfficientViT
-# from efficient_sovit_v3_2 import EfficientViT
+
+from multi_sovit_linear import EfficientViT
 from efficient_sovit import EfficientViT
-# from efficient_vit import EfficientViT
+
 from utils import transform_frame
 import glob
 from os import cpu_count
@@ -41,14 +38,14 @@ import argparse
 
 
 MODELS_DIR = "models"
-BASE_DIR="/share/home/zhangdz/mjw"
+BASE_DIR="/share/home/"
 DATA_DIR = os.path.join(BASE_DIR, "dataset")
 
 #DFDC
 TEST_DIR = os.path.join(DATA_DIR, "test_set")
 OUTPUT_DIR = os.path.join(MODELS_DIR, "tests")
 
-TEST_LABELS_PATH = os.path.join(BASE_DIR, "VIT_DEEPFAKES/data/dfdc_test_labels.csv")
+TEST_LABELS_PATH = os.path.join(BASE_DIR, "/data/dfdc_test_labels.csv")
 
 
 if not os.path.exists(MODELS_DIR):

@@ -12,7 +12,7 @@ import numpy as np
 from typing import Optional
 
 
-SWIN_DIR = "/share/home/zhangdz/mjw/VIT_DEEPFAKES/efficient-vit/models/multi/swin_small_patch4_window7_224.pth"
+SWIN_DIR = "/share/home/RDFM/models/multi/swin_small_patch4_window7_224.pth"
 def drop_path_f(x, drop_prob: float = 0., training: bool = False):
     """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
 
@@ -930,7 +930,7 @@ class EfficientViT(nn.Module):
         self.cls_token = nn.Parameter(torch.randn(1, 1, dim))
         self.dropout = nn.Dropout(emb_dropout)
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim, dropout)
-        self.sovit= StokenAttention(1280, stoken_size=[8,8],num_heads=8)
+        self.sovit= StokenAttention(1280, stoken_size=[2,2],num_heads=8)
         self.sovit_2=StokenAttention(3, stoken_size=[8,8],num_heads=3)
         # dim 输入向量维度 heads:多头自注意力维数 dropout的概率 dim_head 头注意力的维度. 剩depth和mlp_dim
         # dim,depth不需要（构造attention网络深度的指标），heads默认参数，
@@ -957,6 +957,8 @@ class EfficientViT(nn.Module):
             nn.Linear(mlp_dim, num_classes)
         )
         self.gelu=nn.GELU()
+        self.linear1=nn.Linear(num_classes,num_classes,bias=False)
+        self.linear2=nn.Linear(num_classes,num_classes,bias=False)
 
     def forward(self, img,mask=None):
         p = self.patch_size
@@ -1016,7 +1018,7 @@ class EfficientViT(nn.Module):
         img=self.sovit_2(img)
         x3 = self.swin(img)
         x3=self.gelu(x3)
-        x=x4+x3
+        x=self.linear1(x4)+self.linear2(x3)
         # with open('labels_test.txt', 'a') as file:
         #     file.write(f'LABELS={label}  {x}  VS  {x3}\n')
         # print(x)

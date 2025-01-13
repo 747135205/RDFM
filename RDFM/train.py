@@ -16,11 +16,7 @@ from multiprocessing.pool import Pool
 from functools import partial
 from multiprocessing import Manager
 from progress.bar import ChargingBar
-# from efficient_sovit_v2 import EfficientViT
-# from efficient_sovit_v3 import EfficientViT
-# from efficient_sovit import EfficientViT
 from multi_sovit_linear import EfficientViT
-# from efficient_vit import EfficientViT
 import uuid
 from torch.utils.data import DataLoader, TensorDataset, Dataset
 from sklearn.metrics import accuracy_score
@@ -47,41 +43,16 @@ MODELS_DIR = "models"
 
 
 # BASE_DIR="H:\\dataset_test"
-BASE_DIR="/share/home/zhangdz/mjw"
+BASE_DIR="/share/home/"
 # VALIDATION_LABELS_PATH = os.path.join(BASE_DIR, "dfdc_test_labels.csv")
 VALIDATION_LABELS_PATH = os.path.join(BASE_DIR, "dataset/dfdc_test_labels.csv")
 DATA_DIR = os.path.join(BASE_DIR, "dataset")
-TRAINING_DIR = os.path.join(DATA_DIR, "training_set")
+DATA_DIR_2 = os.path.join(BASE_DIR, "dataset_re")
+TRAINING_DIR = os.path.join(DATA_DIR_2, "training_set")
 VALIDATION_DIR = os.path.join(DATA_DIR, "validation_set")
-MODELS_PATH = "models"
+MODELS_PATH = "models/origine"
 
 
-
-# BASE_DIR = '../../deep_fakes/'
-# DATA_DIR = os.path.join(BASE_DIR, "dataset")
-# TRAINING_DIR = os.path.join(DATA_DIR, "training_set")
-# VALIDATION_DIR = os.path.join(DATA_DIR, "validation_set")
-# TEST_DIR = os.path.join(DATA_DIR, "test_set")
-# MODELS_PATH = "models"
-# METADATA_PATH = os.path.join(BASE_DIR, "data/metadata") # Folder containing all training metadata for DFDC dataset
-# VALIDATION_LABELS_PATH = os.path.join(DATA_DIR, "dfdc_val_labels.csv")
-
-class BCEFocalLoss(torch.nn.Module):
-    def __init__(self, gamma=2, alpha=0.25, reduction='mean'):
-        super(BCEFocalLoss, self).__init__()
-        self.gamma = gamma
-        self.alpha = alpha
-        self.reduction = reduction
-
-    def forward(self, predict, target):
-        pt = torch.sigmoid(predict) # sigmoide获取概率
-        #在原始ce上增加动态权重因子，注意alpha的写法，下面多类时不能这样使用
-        loss = - self.alpha * (1 - pt) ** self.gamma * target * torch.log(pt) - (1 - self.alpha) * pt ** self.gamma * (1 - target) * torch.log(1 - pt)
-        if self.reduction == 'mean':
-            loss = torch.mean(loss)
-        elif self.reduction == 'sum':
-            loss = torch.sum(loss)
-        return loss
 
 
 def read_frames(video_path, train_dataset, validation_dataset,opt,config):
@@ -140,7 +111,7 @@ def read_frames(video_path, train_dataset, validation_dataset,opt,config):
 
     
     if VALIDATION_DIR in video_path:
-        min_video_frames = int(max(min_video_frames/8, 2))
+        min_video_frames = int(max(min_video_frames/4, 2))
     frames_interval = int(frames_number / min_video_frames)
     frames_paths = os.listdir(video_path)
     frames_paths_dict = {}
@@ -279,8 +250,7 @@ if __name__ == "__main__":
     print(val_counters)
     print("___________________")
 
-    # loss_fn = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor([class_weights]))
-    loss_fn=BCEFocalLoss()
+    loss_fn = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor([class_weights]))
 
     # Create the data loaders
     validation_labels = np.asarray([row[1] for row in validation_dataset])
@@ -305,8 +275,9 @@ if __name__ == "__main__":
                                     worker_init_fn=None, prefetch_factor=2,
                                     persistent_workers=False)
     del validation_dataset
+    
 
-    model = nn.DataParallel(model.cuda(), device_ids=[0,1])
+    model = model.cuda()
     counter = 0
     not_improved_loss = 0
     previous_loss = math.inf
@@ -331,7 +302,7 @@ if __name__ == "__main__":
             labels = labels.unsqueeze(1)
             images = images.cuda()
             
-            y_pred = model(images)
+            y_pred = model(images,labels)
             y_pred = y_pred.cpu()
             loss = loss_fn(y_pred, labels.float())
         
@@ -368,7 +339,7 @@ if __name__ == "__main__":
             
             val_images = val_images.cuda()
             val_labels = val_labels.unsqueeze(1)
-            val_pred = model(val_images)
+            val_pred = model(val_images,val_labels)
             val_pred = val_pred.cpu()
             val_labels = val_labels.long()
             val_loss = loss_fn(val_pred, val_labels.float())
@@ -399,10 +370,7 @@ if __name__ == "__main__":
 
         if not os.path.exists(MODELS_PATH):
             os.makedirs(MODELS_PATH)
-        torch.save(model.module.state_dict(), os.path.join(MODELS_PATH,
-                                                    "efficientnetB" + str(opt.efficient_net) + "_checkpoint" + str(
-                                                        t) + "_" + opt.dataset))
-
+        torch.save(model.state_dict(), os.path.join(MODELS_PATH,  "efficientnetB"+str(opt.efficient_net)+"_checkpoint" + str(t) + "_" + opt.dataset))
 
 
         train_losses.append(round(float(str(total_loss)),3))
